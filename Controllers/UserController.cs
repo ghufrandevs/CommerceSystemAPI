@@ -1,18 +1,25 @@
-﻿using CommerceSystemAPI.Models;
+﻿using CommerceSystemAPI.DTOs;
+using CommerceSystemAPI.Models;
+using CommerceSystemAPI.Services;
 using Microsoft.AspNetCore.Mvc;
-using CommerceSystemAPI.DTOs;
 namespace CommerceSystemAPI.Controllers
 {
     [ApiController]
     [Route("api/User")]
     public class UserController: ControllerBase
     {
-        AppDbContext contex = new AppDbContext();
+        private readonly AppDbContext _context;
+        private readonly PasswordService _passwordService;
+        public UserController(AppDbContext context, PasswordService passwordService)
+        {
+            _context = context;
+            _passwordService = passwordService;
+        }
 
         [HttpPost("Register")]
         public IActionResult Register(UserRegisterDTO dto)
         {
-            if (contex.Users.Any(u => u.UserEmail == dto.UserEmail))
+            if (_context.Users.Any(u => u.UserEmail == dto.UserEmail))
             {
                 return BadRequest("This Email Already Exists");
             }
@@ -21,15 +28,15 @@ namespace CommerceSystemAPI.Controllers
             {
                 UserName = dto.UserName,
                 UserEmail = dto.UserEmail,
-                UserPassword = dto.UserPassword,
+                UserPassword = _passwordService.HashPassword(dto.UserPassword),
                 UserPhone = dto.UserPhone,
                 Role = "Customer",
                 CreatedAt = DateTime.Now,
                 IsActive = true
             };
 
-            contex.Users.Add(user);
-            contex.SaveChanges();
+            _context.Users.Add(user);
+            _context.SaveChanges();
 
             return Ok("Account Created Successfully");
         }
@@ -37,12 +44,21 @@ namespace CommerceSystemAPI.Controllers
         [HttpPost("Login")]
         public IActionResult Login(LoginDTO dto)
         {
-            var user = contex.Users
-        .FirstOrDefault(u =>
-            u.UserEmail == dto.UserEmail&&
-            u.UserPassword == dto.UserPassword);
+            var user = _context.Users
+    .FirstOrDefault(u =>
+        u.UserEmail == dto.UserEmail);
 
             if (user == null)
+            {
+                return BadRequest("Invalid Email Or Password");
+            }
+            
+            bool isValidPassword =
+           _passwordService.VerifyPassword(
+           dto.UserPassword,
+           user.UserPassword);
+
+            if (!isValidPassword)
             {
                 return BadRequest("Invalid Email Or Password");
             }
@@ -58,8 +74,8 @@ namespace CommerceSystemAPI.Controllers
         [HttpPost("AddUser")]
         public IActionResult AddUser(User user) 
         {
-            contex.Users.Add(user);
-            contex.SaveChanges();
+            _context.Users.Add(user);
+            _context.SaveChanges();
 
             return Ok("User Added Successfully");
 
@@ -68,7 +84,7 @@ namespace CommerceSystemAPI.Controllers
         [HttpGet("GetAllUsers")]
         public IActionResult GetAllUsers() 
         {
-            var usersDto = contex.Users
+            var usersDto = _context.Users
           .Select(u => new UserOutputDTO
         {
         UserId = u.UserId,
@@ -84,7 +100,7 @@ namespace CommerceSystemAPI.Controllers
         [HttpGet("GetUserById")]
         public IActionResult GetUserById(int id) 
         {
-            var user = contex.Users.Find(id);
+            var user = _context.Users.Find(id);
 
             if (user == null)
             {
@@ -105,7 +121,7 @@ namespace CommerceSystemAPI.Controllers
         [HttpPut("UpdateUser")]
         public IActionResult UpdateUser(int id, User user)
         {
-            var usr = contex.Users.Find(id);
+            var usr = _context.Users.Find(id);
 
             if (usr == null)
             {
@@ -119,8 +135,8 @@ namespace CommerceSystemAPI.Controllers
             usr.Role = user.Role;
             usr.IsActive = user.IsActive;
 
-            contex.Users.Update(usr);
-            contex.SaveChanges();
+            _context.Users.Update(usr);
+            _context.SaveChanges();
 
             return Ok("User Updated Successfully");
         }

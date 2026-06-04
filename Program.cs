@@ -1,4 +1,5 @@
-
+using Microsoft.EntityFrameworkCore;
+using CommerceSystemAPI.Services;
 namespace CommerceSystemAPI
 {
     public class Program
@@ -6,11 +7,20 @@ namespace CommerceSystemAPI
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
-
+            /////////////////////////////////////////////////////////////
+            builder.Services.AddDbContext<AppDbContext>(options =>
+            {
+                options.UseSqlServer(
+                    builder.Configuration.GetConnectionString("DefaultConnection"));
+            });
+            ////////////////////////////////////////////////////////////////////////////
             // Add services to the container.
 
             builder.Services.AddControllers();
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+
+            builder.Services.AddScoped<PasswordService>();
+
             builder.Services.AddOpenApi();
 
             // configure Swagger/OpenAPI for API documentation and testing

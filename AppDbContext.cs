@@ -5,10 +5,8 @@ namespace CommerceSystemAPI
 {
     public class AppDbContext :DbContext
     {
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        {
-            optionsBuilder.UseSqlServer("Data Source = (localdb)\\MSSQLLocalDB; Initial Catalog = CommerceWebApiProject; Integrated Security = true; TrustServerCertificate = True ");
-        }
+        public AppDbContext(DbContextOptions<AppDbContext> options)
+            : base(options) { }
         public DbSet<User> Users { get; set; }
 
         public DbSet<Product> Products { get; set; }

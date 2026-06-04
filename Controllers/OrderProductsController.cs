@@ -7,13 +7,17 @@ namespace CommerceSystemAPI.Controllers
     [Route("api/OrderProducts")]
     public class OrderProductsController : ControllerBase
     {
-        AppDbContext contex = new AppDbContext();
+        private readonly AppDbContext _context;
 
+        public OrderProductsController(AppDbContext context)
+        {
+            _context = context;
+        }
         [HttpPost("AddOrderProduct")]
         public IActionResult AddOrderProduct(OrderProducts orderProducts)
         {
-            contex.OrderProductss.Add(orderProducts);
-            contex.SaveChanges();
+            _context.OrderProductss.Add(orderProducts);
+            _context.SaveChanges();
 
             return Ok("Order Product Added Successfully");
         }
@@ -21,14 +25,14 @@ namespace CommerceSystemAPI.Controllers
         [HttpGet("GetAllOrderProducts")]
         public IActionResult GetAllOrderProducts()
         {
-            var orderProducts = contex.OrderProductss.ToList();
+            var orderProducts = _context.OrderProductss.ToList();
 
             return Ok(orderProducts);
         }
         [HttpGet("GetOrderProduct")]
         public IActionResult GetOrderProduct(int orderId, int productId)
         {
-            var orderProduct = contex.OrderProductss
+            var orderProduct = _context.OrderProductss
                 .FirstOrDefault(op =>
                     op.OrderId == orderId &&
                     op.ProductId == productId);
@@ -43,7 +47,7 @@ namespace CommerceSystemAPI.Controllers
         [HttpPut("UpdateOrderProduct")]
         public IActionResult UpdateOrderProduct(int orderId, int productId, OrderProducts orderProduct)
         {
-            var op = contex.OrderProductss
+            var op = _context.OrderProductss
                 .FirstOrDefault(x =>
                     x.OrderId == orderId &&
                     x.ProductId == productId);
@@ -55,8 +59,8 @@ namespace CommerceSystemAPI.Controllers
 
             op.Quantity = orderProduct.Quantity;
 
-            contex.OrderProductss.Update(op);
-            contex.SaveChanges();
+            _context.OrderProductss.Update(op);
+            _context.SaveChanges();
 
             return Ok("Order Product Updated Successfully");
         }

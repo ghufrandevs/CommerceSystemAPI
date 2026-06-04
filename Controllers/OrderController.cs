@@ -10,18 +10,16 @@ namespace CommerceSystemAPI.Controllers
     [Route("api/Order")]
     public class OrderController : ControllerBase
     {
-        AppDbContext context=new AppDbContext();
-        [HttpPost("AddOrder")]
-        public IActionResult AddOrder (Order order)
+        private readonly AppDbContext _context;
+
+        public OrderController(AppDbContext context)
         {
-            context.Orders.Add(order);
-            context.SaveChanges();
-            return Ok("Order Added Successfully");
+            _context = context;
         }
         [HttpGet("GetAllOrders")]
         public IActionResult GetAllOrders()
         {
-            var orders = context.Orders.ToList();
+            var orders = _context.Orders.ToList();
 
             return Ok(orders);
         }
@@ -29,7 +27,7 @@ namespace CommerceSystemAPI.Controllers
         [HttpGet("GetOrderById")]
         public IActionResult GetOrderById(int id)
         {
-            var order = context.Orders.Find(id);
+            var order = _context.Orders.Find(id);
 
             if (order == null)
             {
@@ -42,7 +40,7 @@ namespace CommerceSystemAPI.Controllers
         [HttpGet("ViewMyOrders")]
         public IActionResult ViewMyOrders(int userId)
         {
-            var orders = context.Orders
+            var orders = _context.Orders
                 .Where(o => o.UserId == userId)
                 .ToList();
 
@@ -57,6 +55,12 @@ namespace CommerceSystemAPI.Controllers
         [HttpPost("PlaceOrder")]
         public IActionResult PlaceOrder(PlaceOrderDTO dto)
         {
+            var user = _context.Users.Find(dto.UserId);
+
+            if (user == null)
+            {
+                return BadRequest("User Not Found");
+            }
             decimal totalAmount = 0;
 
             Order order = new Order()
@@ -65,12 +69,12 @@ namespace CommerceSystemAPI.Controllers
                 OrderDate = DateTime.Now
             };
 
-            context.Orders.Add(order);
-            context.SaveChanges();
+            _context.Orders.Add(order);
+            _context.SaveChanges();
 
             foreach (var item in dto.Items)
             {
-                var product = context.Products.Find(item.ProductId);
+                var product = _context.Products.Find(item.ProductId);
 
                 if (product == null)
                 {
@@ -93,12 +97,12 @@ namespace CommerceSystemAPI.Controllers
                     Quantity = item.Quantity
                 };
 
-                context.OrderProductss.Add(orderProduct);
+                _context.OrderProductss.Add(orderProduct);
             }
 
             order.TotalAmount = totalAmount;
 
-            context.SaveChanges();
+            _context.SaveChanges();
 
             return Ok(new
             {
@@ -111,7 +115,7 @@ namespace CommerceSystemAPI.Controllers
         [HttpGet("GetOrderDetails")]
         public IActionResult GetOrderDetails(int orderId)
         {
-            var details = context.OrderProductss
+            var details = _context.OrderProductss
                 .Include(op => op.Product)
                 .Where(op => op.OrderId == orderId)
                 .Select(op => new
@@ -131,21 +135,6 @@ namespace CommerceSystemAPI.Controllers
             return Ok(details);
         }
 
-        [HttpPut("UpdateOrder")]
-        public IActionResult UpdateOrder(Order order ,int id)
-        {
-            var ord=context.Orders.Find(id);
-            if (ord == null)
-            {
-                return NotFound("Order Not Found");
-            }
-            ord.OrderDate = order.OrderDate;
-            ord.TotalAmount = order.TotalAmount;
-            ord.UserId = order.UserId;
-
-            context.Orders.Update(ord);
-            context.SaveChanges();
-            return Ok("Order Updated Successfully");
-        }
+        
     }
 }

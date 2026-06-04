@@ -8,8 +8,12 @@ namespace CommerceSystemAPI.Controllers
     [Route("api/Product")]
     public class ProductController:ControllerBase
     {
-        AppDbContext contex = new AppDbContext();
+        private readonly AppDbContext _context;
 
+        public ProductController(AppDbContext context)
+        {
+            _context = context;
+        }
         [HttpPost("AddProduct")]
         public IActionResult AddProduct(ProductCreateDTO dto)
         {
@@ -20,15 +24,15 @@ namespace CommerceSystemAPI.Controllers
                 Price = dto.Price,
                 Stock = dto.Stock
             };
-            contex.Products.Add(product);
-            contex.SaveChanges();
+            _context.Products.Add(product);
+            _context.SaveChanges();
             return Ok("Product Added Successfully");
         }
 
         [HttpGet("GetAllProducts")]
         public IActionResult GetAllProducts()
         {
-            var products = contex.Products
+            var products = _context.Products
 
                 .Select(p => new ProductOutputDTO
                 {
@@ -49,7 +53,7 @@ namespace CommerceSystemAPI.Controllers
         [HttpGet("GetProductById")]
         public IActionResult GetProductById(int id)
         {
-            var product = contex.Products.Find(id);
+            var product = _context.Products.Find(id);
             if(product == null)
 
             {
@@ -72,7 +76,7 @@ namespace CommerceSystemAPI.Controllers
         public IActionResult FilterProducts(string search, decimal minPrice, decimal maxPrice, int pageNumber, int pageSize)
 
         {
-            var products = contex.Products
+            var products = _context.Products
            .Where(p => p.ProductName.Contains(search) &&
             p.Price >= minPrice &&
             p.Price <= maxPrice)
@@ -86,7 +90,7 @@ namespace CommerceSystemAPI.Controllers
         [HttpPut("UpdateProduct")]
         public IActionResult UpdateProduct(int id , ProductUpdateDTO dto)
         {
-            var prod = contex.Products.Find(id);
+            var prod = _context.Products.Find(id);
             if (prod == null)
             {
                 return NotFound("product not found");
@@ -97,8 +101,8 @@ namespace CommerceSystemAPI.Controllers
             prod.Price = dto.Price;
             prod.Stock = dto.Stock;
 
-            contex.Update(prod);
-            contex.SaveChanges();
+            _context.Update(prod);
+            _context.SaveChanges();
             return Ok("Product Updated Successfully");
         }
 
