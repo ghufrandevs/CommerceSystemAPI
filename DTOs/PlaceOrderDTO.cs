@@ -4,10 +4,10 @@ namespace CommerceSystemAPI.DTOs
 {
     public class PlaceOrderDTO
     {
-            [Required]
-            public int UserId { get; set; }
+            
 
-            [Required]
-            public List<ItemDTO> Items { get; set; }
+        [Required]
+        [MinLength(1)]
+        public List<ItemDTO> Items { get; set; }
         }
 }

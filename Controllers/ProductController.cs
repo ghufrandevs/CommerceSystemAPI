@@ -1,5 +1,6 @@
 ﻿using CommerceSystemAPI.DTOs;
 using CommerceSystemAPI.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CommerceSystemAPI.Controllers
@@ -14,6 +15,7 @@ namespace CommerceSystemAPI.Controllers
         {
             _context = context;
         }
+        [Authorize(Roles = "Admin")]
         [HttpPost("AddProduct")]
         public IActionResult AddProduct(ProductCreateDTO dto)
         {
@@ -28,7 +30,7 @@ namespace CommerceSystemAPI.Controllers
             _context.SaveChanges();
             return Ok("Product Added Successfully");
         }
-
+        [AllowAnonymous]
         [HttpGet("GetAllProducts")]
         public IActionResult GetAllProducts()
         {
@@ -50,6 +52,7 @@ namespace CommerceSystemAPI.Controllers
 
 
         }
+        [AllowAnonymous]
         [HttpGet("GetProductById")]
         public IActionResult GetProductById(int id)
         {
@@ -71,7 +74,7 @@ namespace CommerceSystemAPI.Controllers
             };
             return Ok(productOutput);
         }
-
+        [AllowAnonymous]
         [HttpGet("FilterProducts")]
         public IActionResult FilterProducts(string search, decimal minPrice, decimal maxPrice, int pageNumber, int pageSize)
 
@@ -87,6 +90,7 @@ namespace CommerceSystemAPI.Controllers
            
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpPut("UpdateProduct")]
         public IActionResult UpdateProduct(int id , ProductUpdateDTO dto)
         {
@@ -101,9 +105,26 @@ namespace CommerceSystemAPI.Controllers
             prod.Price = dto.Price;
             prod.Stock = dto.Stock;
 
-            _context.Update(prod);
+            _context.Products.Update(prod);
             _context.SaveChanges();
             return Ok("Product Updated Successfully");
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpDelete("DeleteProduct")]
+        public IActionResult DeleteProduct(int id)
+        {
+            var product = _context.Products.Find(id);
+
+            if (product == null)
+            {
+                return NotFound("Product Not Found");
+            }
+
+            _context.Products.Remove(product);
+            _context.SaveChanges();
+
+            return Ok("Product Deleted Successfully");
         }
 
     }

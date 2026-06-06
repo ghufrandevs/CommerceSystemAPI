@@ -1,5 +1,7 @@
 ﻿using CommerceSystemAPI.DTOs;
 using CommerceSystemAPI.Models;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CommerceSystemAPI.Controllers
@@ -13,13 +15,17 @@ namespace CommerceSystemAPI.Controllers
         {
             _context = context;
         }
+        [Authorize]
         [HttpPost("AddReview")]
         public IActionResult AddReview(ReviewCreateDTO dto)
         {
+            int userId = int.Parse(
+            User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
             var hasPurchased = _context.OrderProductss
-                .Any(op =>
-                    op.ProductId == dto.ProductId &&
-                    op.Order.UserId == dto.UserId);
+            .Any(op =>
+            op.ProductId == dto.ProductId &&
+            op.Order.UserId == userId);
 
             if (!hasPurchased)
             {
@@ -27,9 +33,9 @@ namespace CommerceSystemAPI.Controllers
             }
 
             var existingReview = _context.Reviews
-                .Any(r =>
-                    r.UserId == dto.UserId &&
-                    r.ProductId == dto.ProductId);
+           .Any(r =>
+            r.UserId == userId &&
+            r.ProductId == dto.ProductId);
 
             if (existingReview)
             {
@@ -38,7 +44,7 @@ namespace CommerceSystemAPI.Controllers
 
             Review review = new Review()
             {
-                UserId = dto.UserId,
+                UserId = userId,
                 ProductId = dto.ProductId,
                 Rating = dto.Rating,
                 Comment = dto.Comment,
@@ -59,13 +65,16 @@ namespace CommerceSystemAPI.Controllers
             return Ok("Review Added Successfully");
         }
 
-            [HttpGet("GetAllReview")]
+        [Authorize(Roles = "Admin")]
+        [HttpGet("GetAllReview")]
         public IActionResult GetAllReview()
         {
             var reviews = _context.Reviews.ToList();
 
             return Ok(reviews);
         }
+
+        [AllowAnonymous]
 
         [HttpGet("GetReviewById")]
         public IActionResult GetReviewById(int id)
@@ -80,13 +89,15 @@ namespace CommerceSystemAPI.Controllers
             return Ok(review);
         }
 
+        [AllowAnonymous]
         [HttpGet("ViewProductReviews")]
-        public IActionResult ViewProductReviews(int productId)
+        public IActionResult ViewProductReviews( int productId, int pageNumber, int pageSize)
         {
             var reviews = _context.Reviews
-                .Where(r => r.ProductId == productId)
-                .Take(10)
-                .ToList();
+          .Where(r => r.ProductId == productId)
+          .Skip((pageNumber - 1) * pageSize)
+          .Take(pageSize)
+          .ToList();
 
             if (reviews.Count == 0)
             {
@@ -95,11 +106,19 @@ namespace CommerceSystemAPI.Controllers
 
             return Ok(reviews);
         }
-
+        [Authorize]
         [HttpPut("UpdateReview")]
         public IActionResult UpdateReview(int id, Review review)
         {
             var rev = _context.Reviews.Find(id);
+
+            int userId = int.Parse(
+            User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+            if (rev.UserId != userId)
+            {
+                return Forbid();
+            }
 
             if (rev == null)
             {
@@ -116,18 +135,24 @@ namespace CommerceSystemAPI.Controllers
             return Ok("Review Updated Successfully");
 
         }
-
+        [Authorize]
         [HttpDelete("DeleteReview")]
 
         public IActionResult DeleteReview(int id)
         {
             var review = _context.Reviews.Find(id);
-
             if (review == null)
             {
                 return NotFound("Review Not Found");
             }
+            int userId = int.Parse(
+            User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
+           
+            if (review.UserId != userId)
+            {
+                return Forbid();
+            }
             _context.Reviews.Remove(review);
             _context.SaveChanges();
 

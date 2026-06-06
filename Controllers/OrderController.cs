@@ -1,8 +1,10 @@
 ﻿using CommerceSystemAPI.DTOs;
 using CommerceSystemAPI.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Diagnostics.Metrics;
+using System.Security.Claims;
 
 namespace CommerceSystemAPI.Controllers
 {
@@ -16,6 +18,7 @@ namespace CommerceSystemAPI.Controllers
         {
             _context = context;
         }
+        [Authorize(Roles = "Admin")]
         [HttpGet("GetAllOrders")]
         public IActionResult GetAllOrders()
         {
@@ -23,7 +26,7 @@ namespace CommerceSystemAPI.Controllers
 
             return Ok(orders);
         }
-
+        [Authorize(Roles = "Admin")]
         [HttpGet("GetOrderById")]
         public IActionResult GetOrderById(int id)
         {
@@ -37,26 +40,29 @@ namespace CommerceSystemAPI.Controllers
             return Ok(order);
         }
 
+        [Authorize]
         [HttpGet("ViewMyOrders")]
-        public IActionResult ViewMyOrders(int userId)
+        public IActionResult ViewMyOrders()
         {
+            int userId = int.Parse(
+                User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!
+                    .Value);
+
             var orders = _context.Orders
                 .Where(o => o.UserId == userId)
                 .ToList();
 
-            if (orders.Count == 0)
-            {
-                return NotFound("No Orders Found");
-            }
-
             return Ok(orders);
         }
 
+        [Authorize]
         [HttpPost("PlaceOrder")]
         public IActionResult PlaceOrder(PlaceOrderDTO dto)
         {
-            var user = _context.Users.Find(dto.UserId);
+            int userId = int.Parse(
+        User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
+            var user = _context.Users.Find(userId);
             if (user == null)
             {
                 return BadRequest("User Not Found");
@@ -65,7 +71,8 @@ namespace CommerceSystemAPI.Controllers
 
             Order order = new Order()
             {
-                UserId = dto.UserId,
+                UserId = userId,
+
                 OrderDate = DateTime.Now
             };
 
@@ -111,11 +118,25 @@ namespace CommerceSystemAPI.Controllers
                 TotalAmount = order.TotalAmount
             });
         }
-
+        [Authorize]
         [HttpGet("GetOrderDetails")]
         public IActionResult GetOrderDetails(int orderId)
         {
+            int userId = int.Parse(
+           User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var order = _context.Orders.Find(orderId);
+
+            if (order == null)
+            {
+                return NotFound("Order Not Found");
+            }
+
+            if (order.UserId != userId)
+            {
+                return Forbid();
+            }
             var details = _context.OrderProductss
+
                 .Include(op => op.Product)
                 .Where(op => op.OrderId == orderId)
                 .Select(op => new

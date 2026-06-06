@@ -2,20 +2,25 @@
 using CommerceSystemAPI.Models;
 using CommerceSystemAPI.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 namespace CommerceSystemAPI.Controllers
 {
     [ApiController]
     [Route("api/User")]
     public class UserController: ControllerBase
     {
+        //inject service in constructor
         private readonly AppDbContext _context;
+
         private readonly PasswordService _passwordService;
-        public UserController(AppDbContext context, PasswordService passwordService)
+        private readonly JwtService _jwtService;
+        public UserController(AppDbContext context, PasswordService passwordService, JwtService jwtService)
         {
             _context = context;
             _passwordService = passwordService;
+            _jwtService = jwtService;
         }
-
+        [AllowAnonymous]
         [HttpPost("Register")]
         public IActionResult Register(UserRegisterDTO dto)
         {
@@ -40,7 +45,7 @@ namespace CommerceSystemAPI.Controllers
 
             return Ok("Account Created Successfully");
         }
-
+        [AllowAnonymous]
         [HttpPost("Login")]
         public IActionResult Login(LoginDTO dto)
         {
@@ -67,8 +72,15 @@ namespace CommerceSystemAPI.Controllers
             {
                 return BadRequest("Your account is inactive");
             }
+            string token = _jwtService.GenerateToken(user);
 
-            return Ok("Login Successful");
+            return Ok(new
+            {
+                Message = "Login Successful",
+                Token = token,
+                UserId = user.UserId,
+                Role = user.Role
+            });
         }
 
         [HttpPost("AddUser")]
@@ -80,7 +92,7 @@ namespace CommerceSystemAPI.Controllers
             return Ok("User Added Successfully");
 
         }
-
+        [Authorize(Roles = "Admin")]
         [HttpGet("GetAllUsers")]
         public IActionResult GetAllUsers() 
         {
@@ -96,7 +108,7 @@ namespace CommerceSystemAPI.Controllers
 
             return Ok(usersDto);
         }
-
+        [Authorize(Roles = "Admin")]
         [HttpGet("GetUserById")]
         public IActionResult GetUserById(int id) 
         {
@@ -117,7 +129,7 @@ namespace CommerceSystemAPI.Controllers
 
             return Ok(userOutput);
         }
-
+        [Authorize]
         [HttpPut("UpdateUser")]
         public IActionResult UpdateUser(int id, User user)
         {

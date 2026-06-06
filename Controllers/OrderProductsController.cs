@@ -1,4 +1,5 @@
 ﻿using CommerceSystemAPI.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CommerceSystemAPI.Controllers
@@ -13,6 +14,8 @@ namespace CommerceSystemAPI.Controllers
         {
             _context = context;
         }
+
+        [Authorize(Roles = "Admin")]
         [HttpPost("AddOrderProduct")]
         public IActionResult AddOrderProduct(OrderProducts orderProducts)
         {
@@ -22,6 +25,7 @@ namespace CommerceSystemAPI.Controllers
             return Ok("Order Product Added Successfully");
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpGet("GetAllOrderProducts")]
         public IActionResult GetAllOrderProducts()
         {
@@ -29,6 +33,7 @@ namespace CommerceSystemAPI.Controllers
 
             return Ok(orderProducts);
         }
+        [Authorize(Roles = "Admin")]
         [HttpGet("GetOrderProduct")]
         public IActionResult GetOrderProduct(int orderId, int productId)
         {
@@ -44,6 +49,7 @@ namespace CommerceSystemAPI.Controllers
 
             return Ok(orderProduct);
         }
+        [Authorize(Roles = "Admin")]
         [HttpPut("UpdateOrderProduct")]
         public IActionResult UpdateOrderProduct(int orderId, int productId, OrderProducts orderProduct)
         {
