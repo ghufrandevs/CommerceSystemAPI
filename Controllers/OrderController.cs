@@ -1,5 +1,6 @@
 ﻿using CommerceSystemAPI.DTOs;
 using CommerceSystemAPI.Models;
+using CommerceSystemAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -12,24 +13,29 @@ namespace CommerceSystemAPI.Controllers
     public class OrderController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly OrderService _orderService;
 
-        public OrderController(AppDbContext context)
+        public OrderController(AppDbContext context, OrderService orderService)
         {
             _context = context;
+            _orderService = orderService;
         }
+
         [Authorize(Roles = "Admin")]
         [HttpGet("GetAllOrders")]
         public IActionResult GetAllOrders()
         {
-            var orders = _context.Orders.ToList();
-
-            return Ok(orders);
+            return Ok( _orderService.GetAllOrders());
         }
+
+        [Authorize(Roles = "Admin")]
+
         [Authorize(Roles = "Admin")]
         [HttpGet("GetOrderById")]
         public IActionResult GetOrderById(int id)
         {
-            var order = _context.Orders.Find(id);
+            var order =
+                _orderService.GetOrderById(id);
 
             if (order == null)
             {
@@ -44,14 +50,9 @@ namespace CommerceSystemAPI.Controllers
         public IActionResult ViewMyOrders()
         {
             int userId = int.Parse(
-                User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!
-                    .Value);
+                User.FindFirst( ClaimTypes.NameIdentifier)!.Value);
 
-            var orders = _context.Orders
-                .Where(o => o.UserId == userId)
-                .ToList();
-
-            return Ok(orders);
+            return Ok( _orderService.ViewMyOrders(userId));
         }
 
         [Authorize]
@@ -151,40 +152,32 @@ namespace CommerceSystemAPI.Controllers
         [HttpGet("GetOrderDetails")]
         public IActionResult GetOrderDetails(int orderId)
         {
-            int userId = int.Parse(
-           User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var order = _context.Orders.Find(orderId);
+            int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+               
 
-            if (order == null)
+            var result = _orderService.GetOrderDetails(orderId, userId);
+
+            if (result is string message)
             {
-                return NotFound("Order Not Found");
-            }
-
-            if (order.UserId != userId)
-            {
-                return Forbid();
-            }
-            var details = _context.OrderProductss
-
-                .Include(op => op.Product)
-                .Where(op => op.OrderId == orderId)
-                .Select(op => new
+                if (message == "Forbidden")
                 {
-                    op.ProductId,
-                    op.Product.ProductName,
-                    op.Product.Price,
-                    op.Quantity
-                })
-                .ToList();
+                    return Forbid();
+                }
 
-            if (details.Count == 0)
-            {
-                return NotFound("No Order Details Found");
+                if (message == "Order Not Found")
+                {
+                    return NotFound(message);
+                }
+
+                if (message == "No Order Details Found")
+                {
+                    return NotFound(message);
+                }
             }
 
-            return Ok(details);
+            return Ok(result);
         }
 
-        
+
     }
 }

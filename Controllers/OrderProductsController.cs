@@ -1,4 +1,5 @@
 ﻿using CommerceSystemAPI.Models;
+using CommerceSystemAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,66 +10,61 @@ namespace CommerceSystemAPI.Controllers
     public class OrderProductsController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly OrderProductsService  _orderProductsService;
 
-        public OrderProductsController(AppDbContext context)
+        public OrderProductsController(AppDbContext context, OrderProductsService orderProductsService)
         {
             _context = context;
+            _orderProductsService = orderProductsService;
         }
 
         [Authorize(Roles = "Admin")]
         [HttpPost("AddOrderProduct")]
         public IActionResult AddOrderProduct(OrderProducts orderProducts)
         {
-            _context.OrderProductss.Add(orderProducts);
-            _context.SaveChanges();
-
-            return Ok("Order Product Added Successfully");
+            return Ok(
+                _orderProductsService
+                    .AddOrderProduct(orderProducts));
         }
 
         [Authorize(Roles = "Admin")]
         [HttpGet("GetAllOrderProducts")]
         public IActionResult GetAllOrderProducts()
         {
-            var orderProducts = _context.OrderProductss.ToList();
-
-            return Ok(orderProducts);
+            return Ok(
+                _orderProductsService
+                    .GetAllOrderProducts());
         }
         [Authorize(Roles = "Admin")]
         [HttpGet("GetOrderProduct")]
-        public IActionResult GetOrderProduct(int orderId, int productId)
+        public IActionResult GetOrderProduct( int orderId, int productId)
         {
-            var orderProduct = _context.OrderProductss
-                .FirstOrDefault(op =>
-                    op.OrderId == orderId &&
-                    op.ProductId == productId);
+            var result =
+                _orderProductsService.GetOrderProduct(orderId,  productId);
 
-            if (orderProduct == null)
+            if (result == null)
             {
-                return NotFound("Order Product Not Found");
+                return NotFound(
+                    "Order Product Not Found");
             }
 
-            return Ok(orderProduct);
+            return Ok(result);
         }
         [Authorize(Roles = "Admin")]
         [HttpPut("UpdateOrderProduct")]
-        public IActionResult UpdateOrderProduct(int orderId, int productId, OrderProducts orderProduct)
+        public IActionResult UpdateOrderProduct(int orderId,int productId,OrderProducts orderProduct)
         {
-            var op = _context.OrderProductss
-                .FirstOrDefault(x =>
-                    x.OrderId == orderId &&
-                    x.ProductId == productId);
+            var result =
+                _orderProductsService.UpdateOrderProduct(orderId,productId,orderProduct);
 
-            if (op == null)
+            if (result == "Order Product Not Found")
             {
-                return NotFound("Order Product Not Found");
+                return NotFound(result);
             }
 
-            op.Quantity = orderProduct.Quantity;
-
-            _context.OrderProductss.Update(op);
-            _context.SaveChanges();
-
-            return Ok("Order Product Updated Successfully");
+            return Ok(result);
         }
     }
-}
+
+    }
+

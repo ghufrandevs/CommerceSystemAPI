@@ -1,3 +1,4 @@
+using CommerceSystemAPI.Repositories;
 using CommerceSystemAPI.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -34,7 +35,19 @@ namespace CommerceSystemAPI
 
             builder.Services.AddScoped<PasswordService>();
             builder.Services.AddScoped<JwtService>();
+            builder.Services.AddScoped<UserRepository>();
+            builder.Services.AddScoped<UserService>();
             builder.Services.AddScoped<EmailService>();
+            builder.Services.AddScoped<ProductRepository>();
+            builder.Services.AddScoped<ProductService>();
+            builder.Services.AddScoped<ReviewRepository>();
+            builder.Services.AddScoped<ReviewService>();
+            builder.Services.AddScoped<OrderProductsRepository>();
+            builder.Services.AddScoped<OrderProductsService>();
+            builder.Services.AddScoped<OrderRepository>();
+            builder.Services.AddScoped<OrderService>();
+
+
             var jwtKey = builder.Configuration["Jwt:Key"]!;
             builder.Services.AddAuthentication(options =>
             {

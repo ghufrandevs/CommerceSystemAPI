@@ -16,178 +16,93 @@ namespace CommerceSystemAPI.Controllers
         private readonly PasswordService _passwordService;
         private readonly JwtService _jwtService;
         private readonly EmailService _emailService;
-        public UserController(AppDbContext context, PasswordService passwordService, JwtService jwtService, EmailService emailService)
+        private readonly UserService _userService;
+        public UserController(AppDbContext context, PasswordService passwordService, JwtService jwtService, EmailService emailService, UserService userService)
         {
             _context = context;
             _passwordService = passwordService;
             _jwtService = jwtService;
             _emailService = emailService;
+            _userService = userService;
         }
+
         [AllowAnonymous]
         [HttpPost("Register")]
         public IActionResult Register(UserRegisterDTO dto)
         {
-            if (_context.Users.Any(u => u.UserEmail == dto.UserEmail))
+            string result = _userService.Register(dto);
+
+            if (result != "Account Created Successfully")
             {
-                return BadRequest("This Email Already Exists");
+                return BadRequest(result);
             }
 
-            if (_context.Users.Any(u => u.UserPhone == dto.UserPhone))
-            {
-                return BadRequest("This Phone Number Already Exists");
-            }
-
-            User user = new User()
-            {
-                UserName = dto.UserName,
-                UserEmail = dto.UserEmail,
-                UserPassword = _passwordService.HashPassword(dto.UserPassword),
-                UserPhone = dto.UserPhone,
-                Role = "Customer",
-                CreatedAt = DateTime.Now,
-                IsActive = true
-            };
-
-            _context.Users.Add(user);
-            _context.SaveChanges();
-            _emailService.SendEmail(
-            user.UserEmail,
-           "Welcome",
-           $"Hello {user.UserName}, your account has been created successfully.");
-            return Ok("Account Created Successfully");
+            return Ok(result);
         }
+
         [AllowAnonymous]
         [HttpPost("Login")]
         public IActionResult Login(LoginDTO dto)
         {
-            var user = _context.Users
-    .FirstOrDefault(u =>
-        u.UserEmail == dto.UserEmail);
+            var result = _userService.Login(dto);
 
-            if (user == null)
+            if (result is string)
             {
-                return BadRequest("Invalid Email Or Password");
-            }
-            
-            bool isValidPassword =
-           _passwordService.VerifyPassword(
-           dto.UserPassword,
-           user.UserPassword);
-
-            if (!isValidPassword)
-            {
-                return BadRequest("Invalid Email Or Password");
+                return BadRequest(result);
             }
 
-            if (!user.IsActive)
-            {
-                return BadRequest("Your account is inactive");
-            }
-            string token = _jwtService.GenerateToken(user);
-
-            return Ok(new
-            {
-                Message = "Login Successful",
-                Token = token,
-                UserId = user.UserId,
-                Role = user.Role
-            });
+            return Ok(result);
         }
 
-       
+
         [Authorize(Roles = "Admin")]
         [HttpGet("GetAllUsers")]
         public IActionResult GetAllUsers() 
         {
-            var usersDto = _context.Users
-          .Select(u => new UserOutputDTO
-        {
-        UserId = u.UserId,
-        UserName = u.UserName,
-        UserEmail = u.UserEmail,
-        UserPhone = u.UserPhone
-       })
-        .ToList();
-
-            return Ok(usersDto);
+           var users = _userService.GetAllUsers();
+            return Ok(users);
         }
+
         [Authorize(Roles = "Admin")]
         [HttpGet("GetUserById")]
-        public IActionResult GetUserById(int id) 
+        public IActionResult GetUserById(int id)
         {
-            var user = _context.Users.Find(id);
+            var user = _userService.GetUserById(id);
 
             if (user == null)
             {
                 return NotFound("User Not Found");
             }
 
-            UserOutputDTO userOutput = new UserOutputDTO()
+            return Ok(user);
+            }
+
+           [Authorize]
+           [HttpPut("UpdateUser")]
+            public IActionResult UpdateUser(int id, UserUpdateDTO dto)
             {
-                UserId = user.UserId,
-                UserName = user.UserName,
-                UserEmail = user.UserEmail,
-                UserPhone = user.UserPhone
-            };
-
-            return Ok(userOutput);
-        }
-        [Authorize]
-        [HttpPut("UpdateUser")]
-        public IActionResult UpdateUser(int id, UserUpdateDTO dto)
-        {
-            var usr = _context.Users.Find(id);
-
             int loggedInUserId = int.Parse(
-            User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+                User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
             bool isAdmin = User.IsInRole("Admin");
 
-            if (usr == null)
+            string result = _userService.UpdateUser(id,dto, loggedInUserId, isAdmin);
+              
+            if (result == "User Not Found")
             {
-                return NotFound("User Not Found");
-            }
-            //check Email
-            if (_context.Users.Any(u =>
-            u.UserEmail == dto.UserEmail &&
-            u.UserId != id))
-            {
-                return BadRequest("Email already exists");
-            }
-            // Check Phone Number
-            if (_context.Users.Any(u =>
-                u.UserPhone == dto.UserPhone &&
-                u.UserId != id))
-            {
-                return BadRequest("This Phone Number Already Exists");
+                return NotFound(result);
             }
 
-            if (!isAdmin && loggedInUserId != id)
+            if (result == "Forbidden")
             {
                 return Forbid();
             }
 
-            usr.UserName = dto.UserName;
-            usr.UserEmail = dto.UserEmail;
-            usr.UserPassword =  _passwordService.HashPassword(dto.UserPassword);
-            usr.UserPhone = dto.UserPhone;
-
-            if (isAdmin)
-            {
-                usr.Role = dto.Role;
-                usr.IsActive = dto.IsActive;
-            }
-
-            _context.Users.Update(usr);
-            _context.SaveChanges();
-
-            return Ok("User Updated Successfully");
+            return Ok(result);
         }
 
 
 
-
-
-        }
+    }
 
 }

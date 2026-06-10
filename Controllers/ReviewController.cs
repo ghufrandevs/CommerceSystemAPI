@@ -1,8 +1,9 @@
 ﻿using CommerceSystemAPI.DTOs;
 using CommerceSystemAPI.Models;
+using CommerceSystemAPI.Services;
 using Microsoft.AspNetCore.Authorization;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace CommerceSystemAPI.Controllers
 {
@@ -11,67 +12,40 @@ namespace CommerceSystemAPI.Controllers
     public class ReviewController : ControllerBase
     {
         private readonly AppDbContext _context;
-        public ReviewController(AppDbContext context)
+        private readonly ReviewService _reviewService;
+        public ReviewController(AppDbContext context , ReviewService reviewService)
         {
             _context = context;
+            _reviewService = reviewService;
         }
         [Authorize]
         [HttpPost("AddReview")]
         public IActionResult AddReview(ReviewCreateDTO dto)
         {
             int userId = int.Parse(
-            User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+                User.FindFirst(ClaimTypes.NameIdentifier)!
+                .Value);
 
-            var hasPurchased = _context.OrderProductss
-            .Any(op =>
-            op.ProductId == dto.ProductId &&
-            op.Order.UserId == userId);
+            var result =
+                _reviewService.AddReview(dto, userId);
 
-            if (!hasPurchased)
+            if (result ==
+                "You can only review products you have purchased"
+                ||
+                result ==
+                "You have already reviewed this product")
             {
-                return BadRequest("You can only review products you have purchased");
+                return BadRequest(result);
             }
 
-            var existingReview = _context.Reviews
-           .Any(r =>
-            r.UserId == userId &&
-            r.ProductId == dto.ProductId);
-
-            if (existingReview)
-            {
-                return BadRequest("You have already reviewed this product");
-            }
-
-            Review review = new Review()
-            {
-                UserId = userId,
-                ProductId = dto.ProductId,
-                Rating = dto.Rating,
-                Comment = dto.Comment,
-                ReviewDate = DateTime.Now
-            };
-
-            _context.Reviews.Add(review);
-            _context.SaveChanges();
-
-            var product = _context.Products.Find(dto.ProductId);
-
-            product.OverallRating = (decimal)_context.Reviews
-                .Where(r => r.ProductId == dto.ProductId)
-                .Average(r => r.Rating);
-
-            _context.SaveChanges();
-
-            return Ok("Review Added Successfully");
+            return Ok(result);
         }
 
         [Authorize(Roles = "Admin")]
         [HttpGet("GetAllReview")]
         public IActionResult GetAllReview()
         {
-            var reviews = _context.Reviews.ToList();
-
-            return Ok(reviews);
+            return Ok(_reviewService.GetAllReviews());
         }
 
         [AllowAnonymous]
@@ -79,7 +53,7 @@ namespace CommerceSystemAPI.Controllers
         [HttpGet("GetReviewById")]
         public IActionResult GetReviewById(int id)
         {
-            var review = _context.Reviews.Find(id);
+            var review = _reviewService.GetReviewById(id);
 
             if (review == null)
             {
@@ -114,90 +88,56 @@ namespace CommerceSystemAPI.Controllers
             }
 
             return Ok(reviews);
-        }
-        [Authorize]
-        [HttpPut("UpdateReview")]
-        public IActionResult UpdateReview(int id, ReviewUpdateDTO dto)
-        {
-            var rev = _context.Reviews.Find(id);
+          }
+          [Authorize]
+          [HttpPut("UpdateReview")]
+          public IActionResult UpdateReview(
+          int id,
+           ReviewUpdateDTO dto)
+          {
+            int userId = int.Parse(
+                User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
-            if (rev == null)
+            var result = _reviewService.UpdateReview(id,dto, userId);
+                   
+            if (result == "Review Not Found")
             {
-                return NotFound("Review Not Found");
+                return NotFound(result);
             }
 
-            int userId = int.Parse(
-            User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-
-            if (rev.UserId != userId)
+            if (result == "Forbidden")
             {
                 return Forbid();
             }
 
-            rev.Rating = dto.Rating;
-            rev.Comment = dto.Comment;
-            rev.ReviewDate = DateTime.Now;
-
-            _context.Reviews.Update(rev);
-
-            _context.SaveChanges();
-            var product = _context.Products.Find(rev.ProductId);
-
-            product.OverallRating = (decimal)_context.Reviews
-                .Where(r => r.ProductId == rev.ProductId)
-                .Average(r => r.Rating);
-
-            _context.SaveChanges();
-
-            return Ok("Review Updated Successfully");
-
+            return Ok(result);
         }
         [Authorize]
         [HttpDelete("DeleteReview")]
-
         public IActionResult DeleteReview(int id)
         {
-            var review = _context.Reviews.Find(id);
-            if (review == null)
-            {
-                return NotFound("Review Not Found");
-            }
             int userId = int.Parse(
-            User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+                User.FindFirst(ClaimTypes.NameIdentifier)!
+                .Value);
 
-           
-            if (review.UserId != userId)
+            var result =
+                _reviewService.DeleteReview(
+                    id,
+                    userId);
+
+            if (result == "Review Not Found")
+            {
+                return NotFound(result);
+            }
+
+            if (result == "Forbidden")
             {
                 return Forbid();
             }
-            int productId = review.ProductId;
-            _context.Reviews.Remove(review);
-            _context.SaveChanges();
-            var product = _context.Products.Find(productId);
 
-            var reviews = _context.Reviews
-                .Where(r => r.ProductId == productId);
-
-            if (reviews.Any())
-            {
-                product.OverallRating =
-                    (decimal)reviews.Average(r => r.Rating);
-            }
-            else
-            {
-                product.OverallRating = 0;
-            }
-
-            _context.SaveChanges();
-            return Ok("Review Deleted Successfully");
+            return Ok(result);
         }
-
-
-
-
-
-
-
+    }
 
     }
-}
+
